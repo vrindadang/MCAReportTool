@@ -221,6 +221,9 @@ FORMATTING RULES:
       }
     });
 
-    return response.text || "";
+    let html = response.text || "";
+    // Strip markdown code blocks if present
+    html = html.replace(/^```html\n?/, "").replace(/\n?```$/, "").trim();
+    return html;
   });
 }

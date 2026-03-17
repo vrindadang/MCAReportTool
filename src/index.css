@@ -25,10 +25,12 @@
 .report-container {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   color: #000;
-  line-height: 1.4;
+  line-height: 1.6;
   max-width: 800px;
   margin: 0 auto;
   background: white;
+  overflow: visible !important;
+  padding: 10px;
 }
 
 .page-break {
@@ -55,8 +57,10 @@
   align-items: flex-start;
   border-bottom: 2px solid #000;
   padding-bottom: 15px;
+  padding-top: 10px;
   margin-bottom: 40px;
   text-align: left;
+  overflow: visible !important;
 }
 
 .firm-logo-box {
@@ -76,6 +80,8 @@
   font-weight: 800;
   letter-spacing: 1px;
   margin: 0;
+  padding-top: 5px;
+  line-height: 1.2;
 }
 
 .firm-subtitle {
@@ -99,6 +105,8 @@
   font-weight: 900;
   text-transform: uppercase;
   margin-bottom: 10px;
+  padding-top: 10px;
+  line-height: 1.2;
 }
 
 .cover-of {
@@ -187,11 +195,19 @@
   font-weight: 800;
   margin: 25px 0 15px 0;
   text-decoration: underline;
+  padding-top: 5px;
+  line-height: 1.4;
 }
 
 .notes-section {
   margin: 20px 0;
   font-size: 14px;
+  line-height: 1.6;
+}
+
+.notes-section p {
+  margin-bottom: 8px;
+  padding-top: 2px;
 }
 
 .notes-title {
