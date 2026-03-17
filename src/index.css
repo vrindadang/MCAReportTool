@@ -21,78 +21,218 @@
   }
 }
 
-/* Security Sewa PDF Styles */
-.pdf-report {
-  font-family: 'Inter', sans-serif;
-  color: #1e293b;
+/* Professional Report Styling */
+.report-container {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #000;
+  line-height: 1.4;
+  max-width: 800px;
+  margin: 0 auto;
   background: white;
 }
 
-.pdf-intro {
-  font-style: italic;
-  color: #64748b;
-  font-size: 10px;
-  margin-bottom: 4px;
+.page-break {
+  page-break-after: always;
+  padding: 20px 0;
 }
 
-.pdf-title {
+/* Cover Page */
+.cover-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 1050px;
+  text-align: center;
+  padding: 40px;
+  box-sizing: border-box;
+}
+
+.firm-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 2px solid #000;
+  padding-bottom: 15px;
+  margin-bottom: 40px;
+  text-align: left;
+}
+
+.firm-logo-box {
+  border: 2px solid #000;
+  padding: 10px;
   font-size: 24px;
+  font-weight: 900;
+  margin-right: 20px;
+}
+
+.firm-info {
+  flex: 1;
+}
+
+.firm-name {
+  font-size: 28px;
   font-weight: 800;
-  color: #0f172a;
-  margin-bottom: 4px;
+  letter-spacing: 1px;
+  margin: 0;
 }
 
-.pdf-subtitle {
-  color: #64748b;
-  font-size: 12px;
-  margin-bottom: 16px;
+.firm-subtitle {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
 }
 
-.pdf-divider {
-  border: 0;
-  border-top: 2px solid #0f172a;
-  margin: 16px 0;
+.firm-contact {
+  font-size: 11px;
+  text-align: right;
+  line-height: 1.3;
 }
 
-.pdf-section-heading {
+.cover-title-block {
+  margin-top: 80px;
+}
+
+.cover-main-title {
+  font-size: 36px;
+  font-weight: 900;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.cover-of {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 20px 0;
+}
+
+.cover-company-name {
+  font-size: 28px;
+  font-weight: 800;
+  margin: 30px 0;
+}
+
+.cover-cin {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.cover-office-block {
+  margin-top: 50px;
+}
+
+.cover-office-label {
+  font-size: 18px;
+  font-weight: 800;
+  text-decoration: underline;
+  margin-bottom: 15px;
+  display: block;
+}
+
+.cover-office-address {
   font-size: 16px;
   font-weight: 700;
-  color: #0f172a;
-  margin: 24px 0 12px 0;
+  max-width: 600px;
 }
 
-.pdf-table {
+.cover-behalf-block {
+  margin-top: 60px;
+}
+
+.cover-behalf-label {
+  font-size: 16px;
+  font-weight: 800;
+  margin-bottom: 10px;
+  display: block;
+}
+
+.cover-behalf-name {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.cover-footer {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  font-weight: 800;
+  font-size: 16px;
+  margin-top: auto;
+  padding-top: 30px;
+}
+
+/* Tables */
+.report-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 16px;
-  font-size: 11px;
+  margin: 15px 0;
+  font-size: 12px;
 }
 
-.pdf-table th, .pdf-table td {
-  border: 1px solid #e2e8f0;
+.report-table th, .report-table td {
+  border: 1px solid #000;
   padding: 8px;
   text-align: left;
-  word-wrap: break-word;
+  vertical-align: top;
 }
 
-.pdf-table-header-navy th { background-color: #0f172a; color: white; }
-.pdf-table-header-blue th { background-color: #3b82f6; color: white; }
-.pdf-table-header-teal th { background-color: #14b8a6; color: white; }
-.pdf-table-header-red th { background-color: #ef4444; color: white; }
-.pdf-table-header-gray th { background-color: #4b5563; color: white; }
+.report-table th {
+  background-color: #f0f0f0;
+  font-weight: 800;
+}
 
-.pdf-label { font-weight: 700; display: block; margin-top: 8px; }
-.pdf-body-text { margin-bottom: 8px; display: block; }
+.section-heading {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 25px 0 15px 0;
+  text-decoration: underline;
+}
 
-.pdf-footer {
-  position: fixed;
-  bottom: 20px;
-  left: 0;
-  right: 0;
-  text-align: center;
-  font-style: italic;
+.notes-section {
+  margin: 20px 0;
+  font-size: 14px;
+}
+
+.notes-title {
+  font-weight: 800;
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.share-capital-section {
+  margin: 20px 0;
+}
+
+.share-capital-item {
+  margin-bottom: 15px;
+}
+
+.share-capital-label {
+  font-weight: 800;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Signature */
+.signature-block {
+  margin-top: 50px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.sig-image-placeholder {
+  height: 60px;
+  width: 150px;
+  border: 1px dashed #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 15px 0;
   font-size: 10px;
-  color: #64748b;
+  color: #999;
 }
 
 /* On-screen Preview Styles */
@@ -117,7 +257,7 @@
 }
 
 .preview-card {
-  background-color: #f1f5f9;
+  background-color: #f8fafc;
   border-radius: 12px;
   padding: 16px;
   border: 1px solid #e2e8f0;

@@ -167,22 +167,13 @@ export default function App() {
       // Use the html method for vector-based PDF
       await pdf.html(element, {
         callback: (doc) => {
-          // Add footer to each page
-          const pageCount = doc.getNumberOfPages();
-          for (let i = 1; i <= pageCount; i++) {
-            doc.setPage(i);
-            doc.setFontSize(8);
-            doc.setTextColor(100);
-            doc.setFont('helvetica', 'italic');
-            doc.text(`Girdhar & Co. | Confidential | Page ${i} of ${pageCount}`, doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 10, { align: 'center' });
-          }
           doc.save(`ROC_Report_${data.masterData?.companyName || 'Company'}.pdf`);
           setIsDownloading(false);
         },
-        x: 10,
-        y: 10,
-        width: 190,
-        windowWidth: 1024,
+        x: 0,
+        y: 0,
+        width: 210, // A4 width in mm
+        windowWidth: 800, // Match the max-width in CSS
       });
     } catch (error) {
       console.error('PDF generation failed:', error);
@@ -560,8 +551,8 @@ export default function App() {
       </main>
 
       {/* Hidden Report Content for PDF Generation */}
-      <div className="fixed top-0 left-0 -z-50 opacity-0 pointer-events-none overflow-hidden" style={{ width: '1024px' }}>
-        <div id="report-content" className="bg-white p-12">
+      <div className="fixed top-0 left-0 -z-50 opacity-0 pointer-events-none overflow-hidden" style={{ width: '800px' }}>
+        <div id="report-content" className="report-container">
           {report && <div dangerouslySetInnerHTML={{ __html: report }} />}
         </div>
       </div>
