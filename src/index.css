@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+@layer base {
+  .markdown-body table {
+    @apply w-full border-collapse mb-4;
+  }
+  .markdown-body th, .markdown-body td {
+    @apply border border-slate-200 p-2 text-left;
+  }
+  .markdown-body th {
+    @apply bg-slate-50 font-bold;
+  }
+  .markdown-body h2 {
+    @apply text-lg font-bold border-b-2 border-slate-900 pb-1 mb-4 mt-8 uppercase;
+  }
+  .markdown-body hr {
+    @apply border-0 border-t-2 border-slate-200 my-8;
+  }
+  .markdown-body table, .markdown-body h2 {
+    page-break-inside: avoid;
+  }
+}
+
+/* PDF Export Styles */
+#report-content, #report-content * {
+  color: #1e293b !important;
+  border-color: #e2e8f0 !important;
+  background-color: #ffffff !important;
+}
+
+@media print {
+  #report-content {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+}
+
+.markdown-body {
+  line-height: 1.5;
+  word-spacing: normal;
+  letter-spacing: normal;
+  white-space: normal;
+}
+
+.markdown-body table {
+  border-spacing: 0;
+}
+
+.markdown-body * {
+  box-sizing: border-box;
+}

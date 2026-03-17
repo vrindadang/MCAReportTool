@@ -1,0 +1,5 @@
+{
+  "name": "Corporate Compliance Analyzer",
+  "description": "Extracts structured financial and legal data from MCA documents to generate professional Search Reports using AI.",
+  "requestFramePermissions": []
+}
