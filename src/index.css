@@ -21,6 +21,112 @@
   }
 }
 
+/* Security Sewa PDF Styles */
+.pdf-report {
+  font-family: 'Inter', sans-serif;
+  color: #1e293b;
+  background: white;
+}
+
+.pdf-intro {
+  font-style: italic;
+  color: #64748b;
+  font-size: 10px;
+  margin-bottom: 4px;
+}
+
+.pdf-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+
+.pdf-subtitle {
+  color: #64748b;
+  font-size: 12px;
+  margin-bottom: 16px;
+}
+
+.pdf-divider {
+  border: 0;
+  border-top: 2px solid #0f172a;
+  margin: 16px 0;
+}
+
+.pdf-section-heading {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 24px 0 12px 0;
+}
+
+.pdf-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 16px;
+  font-size: 11px;
+}
+
+.pdf-table th, .pdf-table td {
+  border: 1px solid #e2e8f0;
+  padding: 8px;
+  text-align: left;
+  word-wrap: break-word;
+}
+
+.pdf-table-header-navy th { background-color: #0f172a; color: white; }
+.pdf-table-header-blue th { background-color: #3b82f6; color: white; }
+.pdf-table-header-teal th { background-color: #14b8a6; color: white; }
+.pdf-table-header-red th { background-color: #ef4444; color: white; }
+.pdf-table-header-gray th { background-color: #4b5563; color: white; }
+
+.pdf-label { font-weight: 700; display: block; margin-top: 8px; }
+.pdf-body-text { margin-bottom: 8px; display: block; }
+
+.pdf-footer {
+  position: fixed;
+  bottom: 20px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-style: italic;
+  font-size: 10px;
+  color: #64748b;
+}
+
+/* On-screen Preview Styles */
+.preview-badge {
+  background-color: #0f172a;
+  color: white;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.preview-section-title {
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #0f172a;
+}
+
+.preview-card {
+  background-color: #f1f5f9;
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+}
+
+.money-indigo { color: #6366f1; font-weight: 700; }
+.status-active { color: #10b981; font-weight: 700; }
+.status-struck { color: #ef4444; font-weight: 700; }
+
 /* PDF Export Styles */
 #report-content, #report-content * {
   color: #1e293b !important;

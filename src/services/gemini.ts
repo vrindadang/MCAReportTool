@@ -158,30 +158,44 @@ export async function classifyDocument(text: string): Promise<TabType> {
 export async function generateFinalReport(data: ComplianceData): Promise<string> {
   const model = "gemini-3.1-pro-preview";
   
-  const systemInstruction = `You are a professional report formatter for a Chartered Accountants firm. When given a document, you extract all data and reproduce it as a clean, complete, formally structured report. You never skip sections, never write HTML tags, never write "null" or "N/A" or "not found", and never shorten legal text.
+  const systemInstruction = `You are a professional report formatter for Girdhar & Co. (Chartered Accountants). When given a document, you extract all data and reproduce it as a clean, complete, formally structured HTML report. You never skip sections, never write "null" or "N/A" or "not found", and never shorten legal text.
 
-FORMATTING RULES:
-- Never write any HTML tags, div, span, style, or CSS anywhere in the output.
-- Use only markdown: ## for section headings, pipe tables for all tabular data, **bold** for labels and headings, and --- for dividers between sections.
-- Every section from the source document must appear in the output in the same order. Do not reorder, merge, or skip any section.
-- Every table must have a bold header row. Every single data row from the source must appear — never drop rows.
+STYLE RULES (PDF):
+- Wrap the entire output in <div class="pdf-report">.
+- Start with <div class="pdf-intro">ROC Search & Status Report Prepared by Girdhar & Co.</div>.
+- Followed by <div class="pdf-title">CORPORATE COMPLIANCE & SEARCH REPORT</div>.
+- Followed by <div class="pdf-subtitle">Report Period: FY 2025-26 | Generated on ${new Date().toLocaleDateString('en-IN')}</div>.
+- Followed by <hr class="pdf-divider">.
+- Use <div class="pdf-section-heading">X. SECTION NAME</div> for numbered bold headings.
+- Use <table class="pdf-table"> for all tabular data.
+- Table header rows MUST have specific classes:
+  * <thead class="pdf-table-header-navy"> for primary data (Master Data, Financials).
+  * <thead class="pdf-table-header-blue"> for sub-tables (Other Directorships).
+  * <thead class="pdf-table-header-teal"> for positive data (Active status, satisfied charges).
+  * <thead class="pdf-table-header-red"> for warnings (Struck off, disqualified directors, open charges).
+  * <thead class="pdf-table-header-gray"> for neutral info (SRN lists).
+- For non-table content, use <span class="pdf-label">LABEL</span> followed by <span class="pdf-body-text">VALUE</span>.
+- Use standard <ul> and <li> for bullet points.
+- Every page will have a footer (handled by CSS, but you can assume it exists).
+
+CONTENT RULES:
+- Extract every piece of data directly from the provided structured data.
+- Section 1: Company Master Data — Include company name, CIN, dates, capitals (with amount in words), address, status.
+- Section 2: Signatory Details — One table per director with DIN, designation, appointment date, remuneration, disqualification status, and their other directorships (in a sub-table).
+- Section 3: Charge Documents — One table per charge with charge ID, SRN, amount, holder name, property description, interest rate, repayment terms, and all legal text in full.
+- Section 4: Financial Compliance — Compliance status, industry code, AGM date, balance sheet date, and a list of all SRNs.
+- Section 5: Other Documents — One entry per document with its full summary.
 - Reproduce all legal text, property descriptions, charge details, and address fields word for word. Never summarise or shorten them.
 - Every monetary amount must show both the figure and the words. Example: Rs. 7,50,00,000 (Rupees Seven Crore Fifty Lakhs only).
 - All dates in DD/MM/YYYY format. Status values always written in full: Active, Strike Off, Amalgamated.
 
-CONTENT RULES:
-- Extract every piece of data directly from the provided structured data.
-- For charge documents: produce one complete 7-row table per charge, and one additional 7-row table for each modification of that charge. The 7 rows are always: (1) Name & Address of Charge Holder, (2) Amount Secured, (3) Property Charged, (4) Terms & Conditions, (5) Margin, (6) Terms of Repayment, (7) Extent & Operation of Charge.
-- For director sections: produce one sub-heading and one complete table per director. Never combine directors into one table.
-- For highlights or summary grids: reproduce as a four-column markdown table with Label, Value, Label, Value columns.
-
 OUTPUT RULE:
-- Generate the complete report in one response from start to finish. Do not pause, do not add commentary. Begin with the report header and end with the signature block.`;
+- Generate the complete HTML report in one response. Do not add commentary.`;
 
   const userPrompt = `Generate the professional ROC Search & Status Report based on this data:
   ${JSON.stringify(data, null, 2)}
   
-  Ensure you follow all formatting and content rules strictly. Use Girdhar & Co. as the firm name. The report is for State Bank of India.`;
+  Ensure you follow all styling and content rules strictly. The report is for State Bank of India.`;
 
   return withRetry(async () => {
     const response = await ai.models.generateContent({
@@ -189,7 +203,7 @@ OUTPUT RULE:
       contents: userPrompt,
       config: {
         systemInstruction,
-        temperature: 0.1, // Low temperature for consistency
+        temperature: 0.1,
       }
     });
 

@@ -138,8 +138,8 @@ export default function App() {
   const generateReport = async () => {
     setIsDownloading(true);
     try {
-      const md = await generateFinalReport(data);
-      setReport(md);
+      const html = await generateFinalReport(data);
+      setReport(html);
       
       // Use a small timeout to ensure the DOM has updated with the report content
       setTimeout(async () => {
@@ -164,16 +164,25 @@ export default function App() {
         format: 'a4',
       });
 
-      // Use the html method for vector-based PDF (selectable text, no blur)
+      // Use the html method for vector-based PDF
       await pdf.html(element, {
         callback: (doc) => {
-          doc.save(`Search_Report_${data.masterData?.companyName || 'Company'}.pdf`);
+          // Add footer to each page
+          const pageCount = doc.getNumberOfPages();
+          for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8);
+            doc.setTextColor(100);
+            doc.setFont('helvetica', 'italic');
+            doc.text(`Girdhar & Co. | Confidential | Page ${i} of ${pageCount}`, doc.internal.pageSize.width / 2, doc.internal.pageSize.height - 10, { align: 'center' });
+          }
+          doc.save(`ROC_Report_${data.masterData?.companyName || 'Company'}.pdf`);
           setIsDownloading(false);
         },
         x: 10,
         y: 10,
-        width: 190, // target width in mm
-        windowWidth: 1024, // width of the virtual window to render from
+        width: 190,
+        windowWidth: 1024,
       });
     } catch (error) {
       console.error('PDF generation failed:', error);
@@ -194,18 +203,41 @@ export default function App() {
           <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest font-semibold">MCA Search Report Tool</p>
         </div>
 
-        <nav className="flex-1 p-4 space-y-2">
-          {/* Navigation removed as per user request */}
+        <nav className="flex-1 p-4 overflow-y-auto">
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 px-2">Navigation</h3>
+              <div className="space-y-1">
+                {TABS.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as TabType)}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                      activeTab === tab.id ? "bg-sky-500 text-white shadow-lg shadow-sky-500/20" : "text-slate-400 hover:text-white hover:bg-slate-800"
+                    )}
+                  >
+                    <tab.icon className="w-4 h-4" />
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
         </nav>
 
         <div className="p-4 border-t border-[#1E293B]">
-          {/* Button moved to main screen */}
+          <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
+            <p className="text-[10px] text-slate-400 uppercase font-bold mb-2">Firm Details</p>
+            <p className="text-sm font-bold">Girdhar & Co.</p>
+            <p className="text-[10px] text-slate-500">Chartered Accountants</p>
+          </div>
         </div>
       </aside>
 
       {/* Center Panel */}
-      <main className="flex-1 flex flex-col bg-white border-r border-slate-200">
-        <header className="p-6 border-b border-slate-100 flex justify-between items-center">
+      <main className="flex-1 flex flex-col bg-white border-r border-slate-200 overflow-hidden">
+        <header className="p-6 border-b border-slate-100 flex justify-between items-center bg-white z-10">
           <div>
             <h2 className="text-2xl font-bold text-[#0F172A]">Document Uploads</h2>
             <p className="text-sm text-slate-500">Upload specific documents or use bulk upload below</p>
@@ -238,79 +270,85 @@ export default function App() {
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-8">
-          <div className="max-w-2xl mx-auto space-y-6">
+        <div className="flex-1 overflow-y-auto p-8 bg-slate-50/30">
+          <div className="max-w-4xl mx-auto space-y-8">
             {/* Standard Upload Sections */}
-            {TABS.map((tab) => (
-              <div 
-                key={tab.id} 
-                className={cn(
-                  "p-6 rounded-3xl border transition-all",
-                  activeTab === tab.id ? "bg-sky-50 border-sky-200 ring-1 ring-sky-200" : "bg-slate-50 border-slate-100"
-                )}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className={cn("p-2 rounded-xl", activeTab === tab.id ? "bg-sky-500 text-white" : "bg-white text-slate-400 border border-slate-100")}>
-                      <tab.icon className="w-5 h-5" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {TABS.map((tab) => (
+                <div 
+                  key={tab.id} 
+                  className={cn(
+                    "p-5 rounded-2xl border transition-all bg-white shadow-sm",
+                    activeTab === tab.id ? "border-sky-200 ring-1 ring-sky-200" : "border-slate-100"
+                  )}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className={cn("p-2 rounded-xl", activeTab === tab.id ? "bg-sky-500 text-white" : "bg-slate-100 text-slate-400")}>
+                        <tab.icon className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-[#0F172A] text-sm">{tab.label}</h3>
+                        <p className="text-[10px] text-slate-500">{tab.description}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-bold text-[#0F172A]">{tab.label}</h3>
-                      <p className="text-[10px] text-slate-500">{tab.description}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
                     <StatusBadge active={
                       (tab.id === 'master' && !!data.masterData) ||
                       (tab.id === 'signatories' && data.signatories.length > 0) ||
                       (tab.id === 'charges' && data.charges.length > 0) ||
                       (tab.id === 'financials' && !!data.financials)
                     } />
-                    <label className="relative cursor-pointer bg-white border border-slate-200 hover:border-sky-500 text-[#0F172A] px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2">
-                      <Upload className="w-3 h-3 text-sky-500" />
-                      Upload PDF
-                      <input
-                        type="file"
-                        accept=".pdf"
-                        onChange={(e) => handleFileUpload(e, tab.id as TabType)}
-                        className="hidden"
-                      />
-                    </label>
                   </div>
+                  <label className="w-full relative cursor-pointer bg-slate-50 border border-slate-200 hover:border-sky-500 text-[#0F172A] px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2">
+                    <Upload className="w-3 h-3 text-sky-500" />
+                    Upload PDF
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      onChange={(e) => handleFileUpload(e, tab.id as TabType)}
+                      className="hidden"
+                    />
+                  </label>
                 </div>
-                
-                {tab.id === 'charges' && data.charges.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-sky-100">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">SRN Verification</h4>
-                      <span className="text-[10px] text-sky-600 font-bold">{data.rawSRNs.length} SRNs listed</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={srnInput}
-                        onChange={(e) => setSrnInput(e.target.value)}
-                        placeholder="Add SRNs (comma separated)"
-                        className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-sky-500/20"
-                      />
-                      <button
-                        onClick={handleSRNSubmit}
-                        className="bg-[#0F172A] text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-slate-800"
-                      >
-                        Add
-                      </button>
-                    </div>
-                  </div>
-                )}
+              ))}
+            </div>
+
+            {/* SRN Input Section */}
+            {data.charges.length > 0 && (
+              <div className="p-6 rounded-2xl border border-slate-100 bg-white shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">SRN Verification</h4>
+                  <span className="text-[10px] text-sky-600 font-bold bg-sky-50 px-2 py-1 rounded-lg">{data.rawSRNs.length} SRNs listed</span>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={srnInput}
+                    onChange={(e) => setSrnInput(e.target.value)}
+                    placeholder="Add SRNs (comma separated)"
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20"
+                  />
+                  <button
+                    onClick={handleSRNSubmit}
+                    className="bg-[#0F172A] text-white px-6 py-2 rounded-xl text-sm font-bold hover:bg-slate-800 transition-all"
+                  >
+                    Add
+                  </button>
+                </div>
               </div>
-            ))}
+            )}
 
             {/* Any Other Documents Section */}
-            <div className="p-6 rounded-3xl border border-dashed border-slate-300 bg-slate-50/50">
-              <h3 className="font-bold text-[#0F172A] mb-4 flex items-center gap-2">
-                <FileText className="w-5 h-5 text-slate-400" />
-                Any other documents?
-              </h3>
+            <div className="p-6 rounded-2xl border border-slate-100 bg-white shadow-sm">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 rounded-xl bg-slate-100 text-slate-400">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-[#0F172A] text-sm">Any other documents?</h3>
+                  <p className="text-[10px] text-slate-500">Upload additional ROC filings or resolutions</p>
+                </div>
+              </div>
               <div className="space-y-4">
                 <div className="flex gap-2">
                   <input
@@ -318,7 +356,7 @@ export default function App() {
                     value={customDocName}
                     onChange={(e) => setCustomDocName(e.target.value)}
                     placeholder="Document category name (e.g. Board Resolution)"
-                    className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20"
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20"
                   />
                   <label className={cn(
                     "relative cursor-pointer bg-[#0F172A] text-white px-6 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2",
@@ -341,8 +379,8 @@ export default function App() {
                     <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Added Documents</h4>
                     <div className="flex flex-wrap gap-2">
                       {Object.keys(data.otherDocuments).map((name) => (
-                        <div key={name} className="bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 flex items-center gap-2">
-                          <FileCheck className="w-3 h-3 text-emerald-500" />
+                        <div key={name} className="bg-sky-50 border border-sky-100 px-3 py-1.5 rounded-xl text-xs font-medium text-sky-700 flex items-center gap-2">
+                          <FileCheck className="w-3 h-3 text-sky-500" />
                           {name}
                         </div>
                       ))}
@@ -352,45 +390,170 @@ export default function App() {
               </div>
             </div>
 
-            {/* Ready Documents Summary Section */}
-            <div className="p-6 rounded-3xl border border-emerald-100 bg-emerald-50/30">
-              <h3 className="font-bold text-[#0F172A] mb-4 flex items-center gap-2">
-                <FileCheck className="w-5 h-5 text-emerald-500" />
-                Ready Documents Summary
-              </h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <SummaryItem label="Master Data" ready={!!data.masterData} />
-                  <SummaryItem label="Signatory Details" ready={data.signatories.length > 0} />
-                  <SummaryItem label="Charge Documents" ready={data.charges.length > 0} />
+            {/* On-screen Preview Section */}
+            {(data.masterData || data.signatories.length > 0 || data.charges.length > 0) && (
+              <div className="space-y-8 pt-8 border-t border-slate-200">
+                <div className="flex items-center gap-4">
+                  <div className="h-px flex-1 bg-slate-200"></div>
+                  <h3 className="text-lg font-black text-[#0F172A] uppercase tracking-tighter">Report Preview</h3>
+                  <div className="h-px flex-1 bg-slate-200"></div>
                 </div>
-                <div className="space-y-2">
-                  <SummaryItem label="Financials" ready={!!data.financials} />
-                  <SummaryItem label="SRNs Added" ready={data.rawSRNs.length > 0} />
-                  <SummaryItem label="Other Documents" ready={Object.keys(data.otherDocuments).length > 0} />
-                </div>
+
+                {/* 1. Master Data */}
+                {data.masterData && (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="preview-badge">1</div>
+                      <h4 className="preview-section-title">Company Master Data</h4>
+                    </div>
+                    <div className="preview-card grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <DataField label="Company Name" value={data.masterData.companyName} bold />
+                      <DataField label="CIN" value={data.masterData.cin} />
+                      <DataField label="Registration Date" value={data.masterData.registrationDate} />
+                      <DataField label="Status" value={data.masterData.companyStatus} status />
+                      <DataField label="Authorized Capital" value={data.masterData.authorizedCapital} money />
+                      <DataField label="Paid-up Capital" value={data.masterData.paidUpCapital} money />
+                      <div className="md:col-span-2">
+                        <DataField label="Registered Address" value={data.masterData.registeredAddress} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. Signatory Details */}
+                {data.signatories.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="preview-badge">2</div>
+                      <h4 className="preview-section-title">Signatory Details</h4>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4">
+                      {data.signatories.map((s, idx) => (
+                        <div key={idx} className="preview-card space-y-4">
+                          <div className="flex justify-between items-start">
+                            <DataField label="Director Name" value={s.name} bold />
+                            <div className="text-[10px] font-bold text-slate-400">DIN: {s.din}</div>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <DataField label="Designation" value={s.designation} />
+                            <DataField label="Appt. Date" value={s.appointmentDate} />
+                            <DataField label="Remuneration" value={s.remuneration || 'As per Board'} money />
+                            <DataField label="Disqualification" value={s.disqualificationStatus || 'None'} />
+                          </div>
+                          {s.otherDirectorships && s.otherDirectorships.length > 0 && (
+                            <div className="pt-4 border-t border-slate-200">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Other Directorships</p>
+                              <div className="flex flex-wrap gap-2">
+                                {s.otherDirectorships.map((od, i) => (
+                                  <div key={i} className="bg-white px-3 py-1.5 rounded-lg text-[10px] border border-slate-200">
+                                    <span className="font-bold">{od.companyName}</span>
+                                    <span className={cn("ml-2", od.status === 'Active' ? 'text-emerald-500' : 'text-rose-500')}>({od.status})</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Charge Documents */}
+                {data.charges.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="preview-badge">3</div>
+                      <h4 className="preview-section-title">Charge Documents</h4>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4">
+                      {data.charges.map((c, idx) => (
+                        <div key={idx} className="preview-card space-y-4">
+                          <div className="flex justify-between items-start">
+                            <DataField label="Charge Holder" value={c.holderName} bold />
+                            <div className="text-[10px] font-bold text-slate-400">ID: {c.chargeId}</div>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <DataField label="Amount" value={c.amount} money />
+                            <DataField label="Interest Rate" value={c.interestRate || 'As per Agreement'} />
+                            <DataField label="Creation Date" value={c.dateOfCreation} />
+                            <DataField label="SRN" value={c.srn || 'N/A'} />
+                          </div>
+                          <DataField label="Property Description" value={c.propertyDescription} />
+                          <DataField label="Terms of Repayment" value={c.termsOfRepayment || 'N/A'} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. Financial Compliance */}
+                {data.financials && (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="preview-badge">4</div>
+                      <h4 className="preview-section-title">Financial Compliance</h4>
+                    </div>
+                    <div className="preview-card grid grid-cols-2 md:grid-cols-4 gap-6">
+                      <DataField label="Compliance Status" value={data.financials.complianceStatus} status />
+                      <DataField label="Industry Code" value={data.financials.industryCode} />
+                      <DataField label="Last AGM Date" value={data.financials.lastAgmDate} />
+                      <DataField label="Balance Sheet Date" value={data.financials.lastBalanceSheetDate} />
+                      <div className="col-span-full pt-4 border-t border-slate-200">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">List of SRNs</p>
+                        <div className="flex flex-wrap gap-2">
+                          {data.rawSRNs.map((srn, i) => (
+                            <span key={i} className="bg-white px-2 py-1 rounded border border-slate-200 text-[10px] font-mono">{srn}</span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 5. Other Documents */}
+                {Object.keys(data.otherDocuments).length > 0 && (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="preview-badge">5</div>
+                      <h4 className="preview-section-title">Other Documents</h4>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4">
+                      {Object.entries(data.otherDocuments).map(([name, summary], idx) => (
+                        <div key={idx} className="preview-card">
+                          <DataField label={name} value={summary} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
 
             {/* Generate Report Button */}
-            <div className="pt-6 border-t border-slate-100">
+            <div className="pt-12">
               <button
                 onClick={generateReport}
-                disabled={isAnalyzing || isDownloading}
-                className="w-full bg-[#38BDF8] hover:bg-[#0EA5E9] disabled:opacity-50 text-white font-bold py-4 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-sky-900/20 active:scale-95"
+                disabled={isAnalyzing || isDownloading || !data.masterData}
+                className="w-full bg-[#0F172A] hover:bg-slate-800 disabled:opacity-50 text-white font-black py-5 px-8 rounded-2xl flex items-center justify-center gap-3 transition-all shadow-2xl shadow-slate-900/40 active:scale-[0.98] uppercase tracking-widest text-sm"
               >
                 {isAnalyzing || isDownloading ? (
                   <>
-                    <Loader2 className="animate-spin" />
-                    {isDownloading ? "Generating PDF..." : "Analyzing..."}
+                    <Loader2 className="animate-spin w-5 h-5" />
+                    {isDownloading ? "Formatting Final PDF..." : "Analyzing Data..."}
                   </>
                 ) : (
                   <>
-                    <Download className="w-5 h-5" />
+                    <Download className="w-5 h-5 text-sky-400" />
                     Generate & Download Final Report
                   </>
                 )}
               </button>
+              {!data.masterData && (
+                <p className="text-center text-[10px] text-slate-400 mt-4 font-bold uppercase tracking-widest">
+                  Upload Master Data to enable report generation
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -398,38 +561,42 @@ export default function App() {
 
       {/* Hidden Report Content for PDF Generation */}
       <div className="fixed top-0 left-0 -z-50 opacity-0 pointer-events-none overflow-hidden" style={{ width: '1024px' }}>
-        <div id="report-content" className="bg-white p-8 markdown-body">
-          {report && <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{report}</Markdown>}
+        <div id="report-content" className="bg-white p-12">
+          {report && <div dangerouslySetInnerHTML={{ __html: report }} />}
         </div>
       </div>
     </div>
   );
 }
 
-function SummaryItem({ label, ready }: { label: string, ready: boolean }) {
+function DataField({ label, value, bold, money, status }: { label: string, value: any, bold?: boolean, money?: boolean, status?: boolean }) {
+  const isStruck = value?.toString().toLowerCase().includes('struck') || value?.toString().toLowerCase().includes('disqualified');
+  const isActive = value?.toString().toLowerCase().includes('active') || value?.toString().toLowerCase().includes('compliant');
+
   return (
-    <div className="flex items-center justify-between p-3 rounded-xl bg-white border border-slate-100 shadow-sm">
-      <span className="text-xs font-medium text-slate-600">{label}</span>
-      {ready ? (
-        <div className="flex items-center gap-1 text-emerald-600 font-bold text-[10px]">
-          <FileCheck className="w-3 h-3" />
-          READY
-        </div>
-      ) : (
-        <span className="text-[10px] text-slate-400 font-bold">MISSING</span>
-      )}
+    <div className="space-y-1">
+      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</p>
+      <p className={cn(
+        "text-sm leading-relaxed",
+        bold ? "font-black text-[#0F172A]" : "text-slate-700",
+        money && "money-indigo",
+        status && isActive && "status-active",
+        status && isStruck && "status-struck"
+      )}>
+        {value || '–'}
+      </p>
     </div>
   );
 }
 
 function StatusBadge({ active }: { active: boolean }) {
   return active ? (
-    <div className="bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1">
+    <div className="bg-emerald-50 text-emerald-600 text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1 border border-emerald-100">
       <FileCheck className="w-3 h-3" />
       Ready
     </div>
   ) : (
-    <div className="bg-slate-200 text-slate-500 text-[10px] font-bold px-2 py-1 rounded-lg">
+    <div className="bg-slate-50 text-slate-400 text-[10px] font-bold px-2 py-1 rounded-lg border border-slate-100">
       Pending
     </div>
   );
