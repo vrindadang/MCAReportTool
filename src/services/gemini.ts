@@ -158,58 +158,53 @@ export async function classifyDocument(text: string): Promise<TabType> {
 export async function generateFinalReport(data: ComplianceData): Promise<string> {
   const model = "gemini-3.1-pro-preview";
   
-  const systemInstruction = `You are a professional report formatter for Girdhar & Co. (Chartered Accountants). Your task is to generate a professional ROC Search & Status Report in HTML format that EXACTLY follows the structure and sequence of the provided reference document.
+  const systemInstruction = `You are a professional report formatter for Girdhar & Co. (Chartered Accountants). Your task is to generate a formal ROC Search & Status Report in HTML format suitable for submission to a nationalized bank.
 
-HTML STRUCTURE & CLASSES:
-Wrap the entire report in <div class="report-container">.
+STRICT LAYOUT & FORMATTING RULES:
+1. Wrap the entire report in <div class="report-container">.
+2. Use <div class="page-break"> to force new pages where appropriate (e.g., after the cover page).
+3. Use <div class="report-section"> for each major section to prevent tables from splitting across pages.
+4. All section headings MUST be bold, numbered (e.g., 1., 2.), and followed by <hr class="section-divider">.
+5. All tables MUST use <table class="report-table"> with <thead> and <tbody>.
+6. Header rows (<th>) must be shaded light grey (handled by CSS).
+7. CURRENCY FORMATTING: All currency values must be written as both numerals and words using the Indian numbering system (e.g., ₹75,00,000 – Rupees Seventy-Five Lakhs Only). Use 'Lakhs' and 'Crores' as appropriate.
+8. DATA INTEGRITY: Replace all placeholders like [Shares], [Value], [Not Available] with actual data. If data is missing, use <span class="not-available">Not Available on MCA Portal</span>.
+9. PAGINATION: Ensure headings stay with their tables. Wrap each logical section (heading + divider + table) in a <div class="report-section">. This class has "page-break-inside: avoid".
+10. CHARGES: Each charge must be in its own <div class="report-section no-break"> to ensure it never splits across pages. Use a sub-table for each charge.
+11. TONE: Maintain a formal, neutral, and corporate tone. Use professional language (e.g., "The undersigned has conducted a search...", "Based on the documents available on the MCA portal...").
+12. TABLES: Convert all data into well-structured tables. This includes Master Data, Signatory Details, Share Capital, Other Directorships, and Charges.
 
+STRUCTURE:
 1. COVER PAGE (<div class="page-break cover-page">):
-   - Header: <div class="firm-header"><div class="firm-logo-box">CA</div><div class="firm-info"><p class="firm-name">GIRDHAR & CO.</p><p class="firm-subtitle">CHARTERED ACCOUNTANTS</p></div><div class="firm-contact">5342, Gali no 68, Reghar Pura<br>Karol Bagh, New Delhi - 110005<br>Mobile: 9899997602, 9899997603<br>E-mail: rahul.girdhar87@gmail.com</div></div>
-   - Title Block: <div class="cover-title-block"><h1 class="cover-main-title">ROC SEARCH & STATUS REPORT</h1><p class="cover-of">OF</p><h2 class="cover-company-name">[Company Name]</h2><p class="cover-cin">CIN-[CIN]</p></div>
-   - Office Block: <div class="cover-office-block"><span class="cover-office-label">REGISTERED OFFICE</span><p class="cover-office-address">[Address]</p></div>
-   - Behalf Block: <div class="cover-behalf-block"><span class="cover-behalf-label">ON BEHALF OF</span><p class="cover-behalf-name">STATE BANK OF INDIA</p><p>TAMIL NADU</p></div>
-   - Footer: <div class="cover-footer"><span>Ref No: SBI / SR & ST / 2025-26</span><span>Dated: ${new Date().toLocaleDateString('en-IN')}</span></div>
+   - Header: Firm info (Girdhar & Co.) with logo box.
+   - Title Block: "ROC SEARCH & STATUS REPORT" for [Company Name].
+   - Office Block: Registered Office address.
+   - Behalf Block: "ON BEHALF OF STATE BANK OF INDIA" (or the relevant bank if mentioned).
+   - Footer: Reference number and Date.
 
-2. SEARCH REPORT (<div class="page-break">):
-   - <h2 class="section-heading">SEARCH REPORT</h2>
-   - <table class="report-table"> with 5 rows (Name, CIN, Address, Status, Incorporation Date).
-   - <h2 class="section-heading">6. Directors/Signatory Details:</h2>
-   - <table class="report-table"> (S. No., Director Name, DIN, Designation, Appointment Date, Total Directorships).
+2. SEARCH REPORT SECTIONS:
+   - 1. COMPANY MASTER DATA: Table with CIN, Name, Address, Status, etc.
+   - 2. DIRECTORS/SIGNATORY DETAILS: Table with DIN, Name, Designation, Appt Date.
+   - 3. SHARE CAPITAL: Detailed table with Authorised and Paid-up capital (numerals + words).
+   - 4. COMPANY HIGHLIGHTS: Grid/Table of key compliance dates (AGM, Balance Sheet).
+   - 5. OTHER DIRECTORSHIPS: Individual tables for each director's other directorships.
+   - 6. LIST OF CONTINUING CHARGES: Summary table with Charge ID, Holder, Amount, Date.
+   - 7. DETAILED CHARGE PARTICULARS: Each charge in its own <div class="report-section no-break"> block with a sub-table showing SRN, Property Description, Interest Rate, Terms of Repayment, etc.
 
-3. NOTES & SHARE CAPITAL (<div class="page-break">):
-   - <div class="notes-section"><h3 class="notes-title">Notes</h3><ol><li>...</li></ol></div>
-   - <div class="share-capital-section"><h2 class="section-heading">7. Company Share Capital:</h2>
-     <div class="share-capital-item"><div class="share-capital-label">➤ Authorised Capital (in Rs.)- [Amount] ([Amount in Words])</div><p>Divided into [Shares] shares of Rs [Value] each.</p></div>
-     <div class="share-capital-item"><div class="share-capital-label">➤ Paid up capital (in Rs.) – [Amount] ([Amount in Words])</div><p>Divided into [Shares] shares of Rs [Value] each.</p></div></div>
-   - <h2 class="section-heading">8. Company Highlights:</h2>
-   - <table class="report-table"> (2x4 grid as per PDF).
-   - <table class="report-table"> (3x2 grid for Category, Sub Category, Industry, Balance Sheet Date, Email, Address).
+3. FINAL PAGE:
+   - Disclaimer: A standard professional disclaimer about the scope and limitations of the search.
+   - Signature block aligned to the RIGHT using <div class="signature-block">.
+   - Include: Firm name, CA name, Membership number, Place, Date, and UDIN.
 
-4. DIRECTORS INFO (<div class="page-break">):
-   - <h2 class="section-heading">9. Directors Info and Other Directorships.</h2>
-   - For each director: <h3 class="section-heading">X. [Name] - (DIN: [DIN])</h3><table class="report-table">...</table>
+GENERAL:
+- No text overflow. Wrap text in cells.
+- Professional typography (Times New Roman style).
+- Ensure all section headings are bold, numbered, and followed by <hr class="section-divider">.`;
 
-5. CHARGES (<div class="page-break">):
-   - <h2 class="section-heading">10. LIST OF CONTINUING CHARGES</h2><table class="report-table">...</table>
-   - <h2 class="section-heading">11. COMPANY INDUSTRY CLASSIFICATION:</h2><p>[Industry]</p>
-   - <h2 class="section-heading">12. Particulars of charges registered...</h2>
-   - For each charge: <h3 class="section-heading">X. Charge Created on [Date] vide charge ID number [ID]</h3><table class="report-table">...</table>
-
-6. RELATED PARTIES (<div class="page-break">):
-   - <h2 class="section-heading">13. Potential related Party:</h2><table class="report-table">...</table>
-
-7. SIGNATURE:
-   - <div class="signature-block"><p>For Girdhar & Co.</p><p>Chartered Accountants</p><p>FRN: -038149N</p><div class="sig-image-placeholder">SIGNATURE STAMP</div><p>CA Rahul Girdhar</p><p>Proprietor</p><p>M. No. 530483</p><p>Place: Delhi</p><p>UDIN: - 26530483KODFDF9904</p></div>
-
-FORMATTING RULES:
-- Use clean HTML/CSS.
-- No overlaps. Use professional typography.
-- Reproduce ALL legal text, property descriptions, and monetary amounts word-for-word. Never summarize.`;
-
-  const userPrompt = `Generate the professional ROC Search & Status Report based on this data:
+  const userPrompt = `Generate the formal ROC Search & Status Report based on this data:
   ${JSON.stringify(data, null, 2)}
   
-  Ensure you follow the exact structure of the reference PDF. The report is for State Bank of India.`;
+  Ensure all currency values are converted to words. Ensure no tables are split across pages. The report must be bank-ready. Use the original section numbering and logical flow.`;
 
   return withRetry(async () => {
     const response = await ai.models.generateContent({

@@ -24,6 +24,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import { toPng } from 'html-to-image';
 import { jsPDF } from 'jspdf';
+import html2pdf from 'html2pdf.js';
 
 import { ComplianceData, TabType } from './types';
 import { extractTextFromPDF } from './services/pdf';
@@ -158,23 +159,54 @@ export default function App() {
 
     try {
       setIsDownloading(true);
-      const pdf = new jsPDF({
-        orientation: 'p',
-        unit: 'mm',
-        format: 'a4',
-      });
-
-      // Use the html method for vector-based PDF
-      await pdf.html(element, {
-        callback: (doc) => {
-          doc.save(`ROC_Report_${data.masterData?.companyName || 'Company'}.pdf`);
-          setIsDownloading(false);
+      
+      const opt = {
+        margin: [0, 0, 0, 0] as [number, number, number, number], // Margins are handled by CSS padding: 1in
+        filename: `ROC_Report_${data.masterData?.companyName || 'Company'}.pdf`,
+        image: { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas: { 
+          scale: 2, 
+          useCORS: true, 
+          letterRendering: true,
+          scrollY: 0
         },
-        x: 0,
-        y: 0,
-        width: 210, // A4 width in mm
-        windowWidth: 800, // Match the max-width in CSS
+        jsPDF: { unit: 'in' as const, format: 'a4' as const, orientation: 'portrait' as const },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] as any }
+      };
+
+      // Generate PDF with page numbers and headers
+      const worker = html2pdf().set(opt).from(element).toPdf().get('pdf').then((pdf: any) => {
+        const totalPages = pdf.internal.getNumberOfPages();
+        const companyName = data.masterData?.companyName || 'Company';
+        
+        for (let i = 1; i <= totalPages; i++) {
+          pdf.setPage(i);
+          
+          // Header
+          pdf.setFontSize(9);
+          pdf.setTextColor(150);
+          pdf.text(
+            `ROC Search & Status Report - ${companyName}`,
+            pdf.internal.pageSize.getWidth() / 2,
+            0.4,
+            { align: 'center' }
+          );
+          
+          // Footer
+          pdf.setFontSize(10);
+          pdf.setTextColor(100);
+          pdf.text(
+            `Page ${i} of ${totalPages}`, 
+            pdf.internal.pageSize.getWidth() / 2, 
+            pdf.internal.pageSize.getHeight() - 0.5, 
+            { align: 'center' }
+          );
+        }
       });
+      
+      await (worker as any).save();
+      
+      setIsDownloading(false);
     } catch (error) {
       console.error('PDF generation failed:', error);
       alert('Failed to generate PDF. Please try again.');
