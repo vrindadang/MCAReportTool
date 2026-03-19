@@ -57,6 +57,7 @@ export interface Charge {
   dateOfModification?: string;
   dateOfSatisfaction?: string;
   amountSecured?: string;
+  natureOfCharge?: string;
   termsAndConditions?: string;
   margin?: string;
   termsOfRepayment?: string;
@@ -78,6 +79,8 @@ export interface ComplianceData {
   charges: Charge[];
   financials?: Financials;
   rawSRNs: string[];
+  chgFileCount: number;
+  failedDocuments: string[];
   otherDocuments: { [key: string]: string }; // Stores extracted summaries for custom docs
 }
 

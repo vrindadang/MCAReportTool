@@ -38,7 +38,7 @@ function cn(...inputs: ClassValue[]) {
 const TABS = [
   { id: 'master', label: 'Master Data', icon: FileText, description: 'Company info, Capital, Dates' },
   { id: 'signatories', label: 'Signatory Details', icon: Users, description: 'Director names, DINs' },
-  { id: 'charges', label: 'Charge Documents', icon: CreditCard, description: 'Loan amounts, Property descriptions' },
+  { id: 'charges', label: 'CHG Forms / Charge Docs', icon: CreditCard, description: 'Loan amounts, Property descriptions' },
   { id: 'financials', label: 'Financials (AOC-4/MGT-7)', icon: BarChart3, description: 'Compliance status, Industry code' },
 ] as const;
 
@@ -48,6 +48,8 @@ export default function App() {
     signatories: [],
     charges: [],
     rawSRNs: [],
+    chgFileCount: 0,
+    failedDocuments: [],
     otherDocuments: {}
   });
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -73,7 +75,10 @@ export default function App() {
         const newData = { ...prev };
         if (type === 'master') newData.masterData = result;
         if (type === 'signatories') newData.signatories = result;
-        if (type === 'charges') newData.charges = [...prev.charges, ...result];
+        if (type === 'charges') {
+          newData.charges = [...prev.charges, ...result];
+          newData.chgFileCount = prev.chgFileCount + 1;
+        }
         if (type === 'financials') newData.financials = result;
         if (type === 'other' && customName) {
           newData.otherDocuments = { ...prev.otherDocuments, [customName]: result.summary };
@@ -83,6 +88,13 @@ export default function App() {
       if (type === 'other') setCustomDocName('');
     } catch (error: any) {
       console.error('Analysis failed:', error);
+      if (type === 'charges') {
+        setData(prev => ({
+          ...prev,
+          chgFileCount: prev.chgFileCount + 1,
+          failedDocuments: [...prev.failedDocuments, file.name]
+        }));
+      }
       const errorMessage = error?.message || 'Unknown error';
       alert(`Failed to analyze document: ${errorMessage}. Please check your internet connection and try again.`);
     } finally {
@@ -109,7 +121,10 @@ export default function App() {
           const newData = { ...prev };
           if (category === 'master') newData.masterData = result;
           if (category === 'signatories') newData.signatories = result;
-          if (category === 'charges') newData.charges = [...prev.charges, ...result];
+          if (category === 'charges') {
+            newData.charges = [...prev.charges, ...result];
+            newData.chgFileCount = prev.chgFileCount + 1;
+          }
           if (category === 'financials') newData.financials = result;
           if (category === 'other') {
             newData.otherDocuments = { ...prev.otherDocuments, [file.name]: result.summary };
@@ -123,6 +138,14 @@ export default function App() {
         }
       } catch (error) {
         console.error(`Failed to process ${file.name}:`, error);
+        // If it looks like a CHG file, count it as failed charge file
+        if (file.name.toUpperCase().includes('CHG')) {
+          setData(prev => ({
+            ...prev,
+            chgFileCount: prev.chgFileCount + 1,
+            failedDocuments: [...prev.failedDocuments, file.name]
+          }));
+        }
       }
     }
 
@@ -315,12 +338,19 @@ export default function App() {
                         <p className="text-[10px] text-slate-500">{tab.description}</p>
                       </div>
                     </div>
-                    <StatusBadge active={
-                      (tab.id === 'master' && !!data.masterData) ||
-                      (tab.id === 'signatories' && data.signatories.length > 0) ||
-                      (tab.id === 'charges' && data.charges.length > 0) ||
-                      (tab.id === 'financials' && !!data.financials)
-                    } />
+                    <div className="flex flex-col items-end gap-1">
+                      <StatusBadge active={
+                        (tab.id === 'master' && !!data.masterData) ||
+                        (tab.id === 'signatories' && data.signatories.length > 0) ||
+                        (tab.id === 'charges' && data.charges.length > 0) ||
+                        (tab.id === 'financials' && !!data.financials)
+                      } />
+                      {tab.id === 'charges' && data.chgFileCount > 0 && (
+                        <span className="text-[9px] font-bold text-slate-400">
+                          {data.chgFileCount} Files Processed
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <label className="w-full relative cursor-pointer bg-slate-50 border border-slate-200 hover:border-sky-500 text-[#0F172A] px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2">
                     <Upload className="w-3 h-3 text-sky-500" />
@@ -332,6 +362,19 @@ export default function App() {
                       className="hidden"
                     />
                   </label>
+                  {tab.id === 'charges' && data.failedDocuments.length > 0 && (
+                    <div className="mt-3 p-2 bg-rose-50 border border-rose-100 rounded-lg">
+                      <p className="text-[9px] font-bold text-rose-600 uppercase mb-1 flex items-center gap-1">
+                        <AlertCircle className="w-2 h-2" />
+                        Failed to extract:
+                      </p>
+                      <ul className="text-[9px] text-rose-500 list-disc list-inside">
+                        {data.failedDocuments.map((name, i) => (
+                          <li key={i}>{name}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -500,13 +543,18 @@ export default function App() {
                             <div className="text-[10px] font-bold text-slate-400">ID: {c.chargeId}</div>
                           </div>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <DataField label="Amount" value={c.amount} money />
-                            <DataField label="Interest Rate" value={c.interestRate || 'As per Agreement'} />
+                            <DataField label="Amount Secured" value={c.amountSecured || c.amount} money />
+                            <DataField label="Nature of Charge" value={c.natureOfCharge || 'N/A'} />
                             <DataField label="Creation Date" value={c.dateOfCreation} />
-                            <DataField label="SRN" value={c.srn || 'N/A'} />
+                            <DataField label="Modification Date" value={c.dateOfModification || 'N/A'} />
                           </div>
                           <DataField label="Property Description" value={c.propertyDescription} />
-                          <DataField label="Terms of Repayment" value={c.termsOfRepayment || 'N/A'} />
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <DataField label="Margin" value={c.margin || 'N/A'} />
+                            <DataField label="Terms of Repayment" value={c.termsOfRepayment || 'N/A'} />
+                            <DataField label="Extent & Operation" value={c.extentAndOperation || 'N/A'} />
+                          </div>
+                          <DataField label="Terms & Conditions" value={c.termsAndConditions || 'N/A'} />
                         </div>
                       ))}
                     </div>

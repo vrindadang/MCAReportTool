@@ -10,7 +10,7 @@ export async function analyzeDocument(text: string, type: TabType, customType?: 
   const prompts = {
     master: "Extract Company Master Data: Company Name, CIN, Registration Date, Authorized Capital, Paid-up Capital, Registered Address, Company Status (e.g., ACTIVE, Struck Off), Date of last AGM, Date of Balance Sheet, and ACTIVE compliance status. Also extract the 'Index of Charges' table if present, including Charge ID, Amount, Holder Name, Date of Creation, Date of Modification, and Date of Satisfaction.",
     signatories: "Extract Signatory Details: List of Directors with DIN, Name, Designation (e.g., Deputy Managing Director), Appointment Date, Remuneration/Salary Scale, and any Disqualification Status.",
-    charges: "Extract Detailed Charge Particulars from ROC Search Report. For each Charge ID, extract all entries (Creation and all Modifications). For each entry, extract: Charge ID, Type (Creation or Modification), Date, Amount Secured, Holder Name & Address, Interest Rate, Repayment Tenure, Terms of Repayment, Terms & Conditions, Margin, Property Description / Extent.",
+    charges: "Extract ALL Charge details from this CHG-1 / CHG form. Extract ALL fields: Charge ID, Date of Creation, Date of Modification (if any), Name of Charge Holder (Bank/Institution), Amount Secured (numerals and words), Nature/Type of Charge, Property Description (full details), Terms & Conditions, Margin, Repayment Terms, and Extent and Operation of Charge. Do NOT summarize or compress legal descriptions.",
     financials: "Extract Financials (AOC-4/MGT-7): Compliance Status, Industry Code, Last AGM Date, Last Balance Sheet Date.",
     other: `Extract key information from this document titled "${customType}". Focus on legal and financial implications, specifically looking for hidden details like interest rates, repayment terms, or director remuneration if applicable.`
   };
@@ -90,16 +90,17 @@ export async function analyzeDocument(text: string, type: TabType, customType?: 
         type: Type.OBJECT,
         properties: {
           chargeId: { type: Type.STRING },
-          type: { type: Type.STRING, enum: ["creation", "modification"] },
-          date: { type: Type.STRING },
-          amountSecured: { type: Type.STRING },
+          dateOfCreation: { type: Type.STRING },
+          dateOfModification: { type: Type.STRING },
           holderName: { type: Type.STRING },
-          interestRate: { type: Type.STRING },
-          repaymentTenure: { type: Type.STRING },
-          termsOfRepayment: { type: Type.STRING },
+          amountSecured: { type: Type.STRING },
+          natureOfCharge: { type: Type.STRING },
+          propertyDescription: { type: Type.STRING },
           termsAndConditions: { type: Type.STRING },
           margin: { type: Type.STRING },
-          propertyDescription: { type: Type.STRING },
+          termsOfRepayment: { type: Type.STRING },
+          extentAndOperation: { type: Type.STRING },
+          type: { type: Type.STRING, enum: ["creation", "modification"] },
         }
       }
     },
@@ -207,19 +208,27 @@ STRUCTURE:
    - 6. LIST OF CONTINUING CHARGES: Summary table with Charge ID, Holder, Amount, Date.
    - 7. DETAILED CHARGE PARTICULARS:
         Follow these steps strictly for the Charges section:
+        
+        CRITICAL REQUIREMENT – CHARGE DATA COMPLETENESS:
+        - You MUST include ALL charge-related data from ALL provided CHG files without omission.
+        - Process EVERY charge entry in the provided data.
+        - If any charge data is missing or unreadable (check data.failedDocuments), explicitly mention: "Charge data could not be extracted from [filename/ID]".
+        - Do NOT summarize or compress legal descriptions.
+        - Do NOT change formatting.
+        
         STEP 1 — IDENTIFY OPEN/ACTIVE CHARGES ONLY:
         From MCA Master Data (data.masterData.indexOfCharges), scan "Date of Satisfaction".
         - If "Date of Satisfaction" is BLANK/NULL → charge is OPEN/ACTIVE → INCLUDE IT
         - If "Date of Satisfaction" has any date → charge is CLOSED/SATISFIED → EXCLUDE IT
-        Always use MCA Master Data as the authority.
+        Always use MCA Master Data as the authority for "Open" status.
         
         STEP 2 — CLASSIFY EACH OPEN CHARGE:
         For each open charge from Step 1, check "Date of Modification" in MCA Master Data:
         - If "Date of Modification" is BLANK/NULL → SINGLE ENTRY CHARGE
         - If "Date of Modification" has a date → MODIFIED CHARGE
         
-        STEP 3 — EXTRACT DETAILS FROM ROC REPORT (data.charges):
-        - For SINGLE ENTRY CHARGES: Extract full details from the ROC report entry for that Charge ID.
+        STEP 3 — EXTRACT DETAILS FROM CHG DATA (data.charges):
+        - For SINGLE ENTRY CHARGES: Extract full details from the CHG data entry for that Charge ID.
         - For MODIFIED CHARGES: Extract TWO entries for that Charge ID:
           1. FIRST ENTRY: The "creation" type entry.
           2. LAST ENTRY: The latest "modification" type entry by date.
@@ -228,6 +237,11 @@ STRUCTURE:
         Present in two sub-groups:
         A) SINGLE ENTRY CHARGES (No Modifications): List each with full details in a block.
         B) CHARGES WITH MODIFICATIONS: For each, show two rows: "First Created" and "Last Modified".
+        
+        VALIDATION (MANDATORY):
+        - Count total number of CHG files provided (data.chgFileCount).
+        - Count total number of charges included in the report.
+        - If any file is not processed or any charge is missing, STOP and output: "ERROR: Incomplete charge data. Some CHG files were not processed."
         
         IMPORTANT:
         - Total open charges must match the count in MCA Master Data.
