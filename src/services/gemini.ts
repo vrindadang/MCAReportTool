@@ -129,6 +129,8 @@ export async function analyzeDocument(text: string, type: TabType, customType?: 
       Type: ${type === 'other' ? customType : type}
       Prompt: ${prompts[type]}
       
+      Note: The text may contain raw XML data from an XFA form. If so, prioritize the data within the XML tags as it is often more accurate for government forms.
+      
       Text:
       ${text.substring(0, 30000)}`, // Limit text to avoid token issues
       config: {
