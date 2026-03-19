@@ -73,6 +73,11 @@ export interface Financials {
   lastBalanceSheetDate: string;
 }
 
+export interface FailedDocument {
+  name: string;
+  error: string;
+}
+
 export interface ComplianceData {
   masterData?: MasterData;
   signatories: Signatory[];
@@ -80,7 +85,7 @@ export interface ComplianceData {
   financials?: Financials;
   rawSRNs: string[];
   chgFileCount: number;
-  failedDocuments: string[];
+  failedDocuments: FailedDocument[];
   otherDocuments: { [key: string]: string }; // Stores extracted summaries for custom docs
 }
 

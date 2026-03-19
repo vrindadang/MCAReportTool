@@ -22,23 +22,49 @@ export async function extractTextFromPDF(file: File): Promise<string> {
 
   // Check for XFA (XML Forms Architecture) data
   try {
-    const xfa = await (pdf as any).getXfa();
+    let xfa: any = null;
+    
+    // Try different ways to get XFA data depending on pdf.js version
+    if (typeof (pdf as any).getXfa === 'function') {
+      xfa = await (pdf as any).getXfa();
+    } else if ((pdf as any).xfa) {
+      xfa = (pdf as any).xfa;
+    } else if ((pdf as any).data && (pdf as any).data.xfa) {
+      xfa = (pdf as any).data.xfa;
+    }
+
     if (xfa) {
-      // XFA is often a map of XML strings. We'll join them all.
       let xfaText = '';
       
-      // In version 5, the data is often in the 'datasets' property
-      if (xfa.datasets) {
-        for (const key in xfa.datasets) {
-          if (typeof xfa.datasets[key] === 'string') {
-            xfaText += `\n--- XFA Dataset (${key}) ---\n${xfa.datasets[key]}\n`;
-          }
-        }
+      // The XFA object can be a Map or a plain object
+      let datasets: any = null;
+      if (xfa instanceof Map) {
+        datasets = xfa.get('datasets') || xfa;
       } else {
-        // Fallback to iterating the whole object
-        for (const key in xfa) {
-          if (typeof xfa[key] === 'string') {
-            xfaText += `\n--- XFA Data (${key}) ---\n${xfa[key]}\n`;
+        datasets = xfa.datasets || xfa;
+      }
+
+      if (datasets && typeof datasets === 'object') {
+        // If it's a Map, iterate it
+        if (datasets instanceof Map) {
+          for (const [key, content] of datasets.entries()) {
+            if (typeof content === 'string') {
+              const truncatedContent = content.length > 10000 
+                ? content.substring(0, 10000) + "... [TRUNCATED]" 
+                : content;
+              xfaText += `\n--- XFA Dataset (${key}) ---\n${truncatedContent}\n`;
+            }
+          }
+        } else {
+          // If it's a plain object, iterate keys
+          for (const key in datasets) {
+            const content = datasets[key];
+            if (typeof content === 'string') {
+              const truncatedContent = content.length > 10000 
+                ? content.substring(0, 10000) + "... [TRUNCATED]" 
+                : content;
+              xfaText += `\n--- XFA Dataset (${key}) ---\n${truncatedContent}\n`;
+            }
           }
         }
       }

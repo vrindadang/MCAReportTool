@@ -171,8 +171,33 @@ export async function classifyDocument(text: string): Promise<TabType> {
   });
 }
 
+function truncateData(data: any): any {
+  if (typeof data !== 'object' || data === null) return data;
+  
+  if (Array.isArray(data)) {
+    return data.map(truncateData);
+  }
+  
+  const truncated: any = {};
+  for (const key in data) {
+    const value = data[key];
+    if (typeof value === 'string' && value.length > 3000) {
+      // Truncate long fields but keep enough for context
+      truncated[key] = value.substring(0, 3000) + "... [TRUNCATED FOR BREVITY - SEE ORIGINAL DOCUMENT]";
+    } else if (typeof value === 'object') {
+      truncated[key] = truncateData(value);
+    } else {
+      truncated[key] = value;
+    }
+  }
+  return truncated;
+}
+
 export async function generateFinalReport(data: ComplianceData): Promise<string> {
   const model = "gemini-3.1-pro-preview";
+  
+  // Truncate extremely large data fields to avoid token limits
+  const processedData = truncateData(data);
   
   const systemInstruction = `You are a professional report formatter for Girdhar & Co. (Chartered Accountants). Your task is to generate a formal ROC Search & Status Report in HTML format suitable for submission to a nationalized bank.
 
@@ -217,8 +242,7 @@ STRUCTURE:
         - You MUST include ALL charge-related data from ALL provided CHG files without omission.
         - Process EVERY charge entry in the provided data.
         - If any charge data is missing or unreadable (check data.failedDocuments), explicitly mention: "Charge data could not be extracted from [filename/ID]".
-        - Do NOT summarize or compress legal descriptions.
-        - Do NOT change formatting.
+        - If the provided description is marked as [TRUNCATED], include the text as provided and append a note: "(Full details available in the original CHG form)".
         
         STEP 1 — IDENTIFY OPEN/ACTIVE CHARGES ONLY:
         From MCA Master Data (data.masterData.indexOfCharges), scan "Date of Satisfaction".
@@ -261,10 +285,11 @@ STRUCTURE:
 GENERAL:
 - No text overflow. Wrap text in cells.
 - Professional typography (Times New Roman style).
-- Ensure all section headings are bold, numbered, and followed by <hr class="section-divider">.`;
+- Ensure all section headings are bold, numbered, and followed by <hr class="section-divider">.
+- If the report is becoming extremely long, prioritize clarity and essential facts over repeating every word of long legal boilerplate.`;
 
   const userPrompt = `Generate the formal ROC Search & Status Report based on this data:
-  ${JSON.stringify(data, null, 2)}
+  ${JSON.stringify(processedData, null, 2)}
   
   Ensure all currency values are converted to words. Ensure no tables are split across pages. The report must be bank-ready. Use the original section numbering and logical flow.`;
 

@@ -88,14 +88,14 @@ export default function App() {
       if (type === 'other') setCustomDocName('');
     } catch (error: any) {
       console.error('Analysis failed:', error);
+      const errorMessage = error?.message || 'Unknown error';
       if (type === 'charges') {
         setData(prev => ({
           ...prev,
           chgFileCount: prev.chgFileCount + 1,
-          failedDocuments: [...prev.failedDocuments, file.name]
+          failedDocuments: [...prev.failedDocuments, { name: file.name, error: errorMessage }]
         }));
       }
-      const errorMessage = error?.message || 'Unknown error';
       alert(`Failed to analyze document: ${errorMessage}. Please check your internet connection and try again.`);
     } finally {
       setIsAnalyzing(false);
@@ -136,14 +136,15 @@ export default function App() {
         if (i < files.length - 1) {
           await new Promise(resolve => setTimeout(resolve, 800));
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Failed to process ${file.name}:`, error);
+        const errorMessage = error?.message || 'Unknown error';
         // If it looks like a CHG file, count it as failed charge file
         if (file.name.toUpperCase().includes('CHG')) {
           setData(prev => ({
             ...prev,
             chgFileCount: prev.chgFileCount + 1,
-            failedDocuments: [...prev.failedDocuments, file.name]
+            failedDocuments: [...prev.failedDocuments, { name: file.name, error: errorMessage }]
           }));
         }
       }
@@ -368,9 +369,12 @@ export default function App() {
                         <AlertCircle className="w-2 h-2" />
                         Failed to extract:
                       </p>
-                      <ul className="text-[9px] text-rose-500 list-disc list-inside">
-                        {data.failedDocuments.map((name, i) => (
-                          <li key={i}>{name}</li>
+                      <ul className="text-[9px] text-rose-500 space-y-1">
+                        {data.failedDocuments.map((doc, i) => (
+                          <li key={i} className="flex flex-col">
+                            <span className="font-bold">{doc.name}</span>
+                            <span className="opacity-70 italic">{doc.error}</span>
+                          </li>
                         ))}
                       </ul>
                     </div>
