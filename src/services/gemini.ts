@@ -8,9 +8,9 @@ export async function analyzeDocument(text: string, type: TabType, customType?: 
   const model = "gemini-3-flash-preview";
   
   const prompts = {
-    master: "Extract Company Master Data: Company Name, CIN, Registration Date, Authorized Capital, Paid-up Capital, Registered Address, and Company Status (e.g., ACTIVE, Struck Off).",
+    master: "Extract Company Master Data: Company Name, CIN, Registration Date, Authorized Capital, Paid-up Capital, Registered Address, Company Status (e.g., ACTIVE, Struck Off), Date of last AGM, Date of Balance Sheet, and ACTIVE compliance status. Also extract the 'Index of Charges' table if present, including Charge ID, Amount, Holder Name, Date of Creation, Date of Modification, and Date of Satisfaction.",
     signatories: "Extract Signatory Details: List of Directors with DIN, Name, Designation (e.g., Deputy Managing Director), Appointment Date, Remuneration/Salary Scale, and any Disqualification Status.",
-    charges: "Extract Charge Documents: SRN, Charge ID, Amount, Holder Name, Property Description (e.g., specific vehicle models, land survey numbers). Specifically look for Interest Rates and Repayment Tenures.",
+    charges: "Extract Detailed Charge Particulars from ROC Search Report. For each Charge ID, extract all entries (Creation and all Modifications). For each entry, extract: Charge ID, Type (Creation or Modification), Date, Amount Secured, Holder Name & Address, Interest Rate, Repayment Tenure, Terms of Repayment, Terms & Conditions, Margin, Property Description / Extent.",
     financials: "Extract Financials (AOC-4/MGT-7): Compliance Status, Industry Code, Last AGM Date, Last Balance Sheet Date.",
     other: `Extract key information from this document titled "${customType}". Focus on legal and financial implications, specifically looking for hidden details like interest rates, repayment terms, or director remuneration if applicable.`
   };
@@ -36,6 +36,23 @@ export async function analyzeDocument(text: string, type: TabType, customType?: 
         companyCategory: { type: Type.STRING },
         companySubCategory: { type: Type.STRING },
         emailId: { type: Type.STRING },
+        lastAgmDate: { type: Type.STRING },
+        lastBalanceSheetDate: { type: Type.STRING },
+        activeCompliance: { type: Type.STRING },
+        indexOfCharges: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              chargeId: { type: Type.STRING },
+              amount: { type: Type.STRING },
+              holderName: { type: Type.STRING },
+              dateOfCreation: { type: Type.STRING },
+              dateOfModification: { type: Type.STRING },
+              dateOfSatisfaction: { type: Type.STRING },
+            }
+          }
+        }
       },
       required: ["companyName", "cin"]
     },
@@ -72,21 +89,17 @@ export async function analyzeDocument(text: string, type: TabType, customType?: 
       items: {
         type: Type.OBJECT,
         properties: {
-          srn: { type: Type.STRING },
           chargeId: { type: Type.STRING },
-          amount: { type: Type.STRING },
+          type: { type: Type.STRING, enum: ["creation", "modification"] },
+          date: { type: Type.STRING },
+          amountSecured: { type: Type.STRING },
           holderName: { type: Type.STRING },
-          propertyDescription: { type: Type.STRING },
           interestRate: { type: Type.STRING },
           repaymentTenure: { type: Type.STRING },
-          propertyBoundaries: { type: Type.STRING },
-          dateOfCreation: { type: Type.STRING },
-          dateOfLastModification: { type: Type.STRING },
-          amountSecured: { type: Type.STRING },
+          termsOfRepayment: { type: Type.STRING },
           termsAndConditions: { type: Type.STRING },
           margin: { type: Type.STRING },
-          termsOfRepayment: { type: Type.STRING },
-          extentAndOperation: { type: Type.STRING },
+          propertyDescription: { type: Type.STRING },
         }
       }
     },
@@ -186,10 +199,41 @@ STRUCTURE:
    - 1. COMPANY MASTER DATA: Table with CIN, Name, Address, Status, etc.
    - 2. DIRECTORS/SIGNATORY DETAILS: Table with DIN, Name, Designation, Appt Date.
    - 3. SHARE CAPITAL: Detailed table with Authorised and Paid-up capital (numerals + words).
-   - 4. COMPANY HIGHLIGHTS: Grid/Table of key compliance dates (AGM, Balance Sheet).
+   - 4. COMPANY HIGHLIGHTS: Grid/Table of key compliance dates. Specifically include:
+        - "Date of Last Annual General Meeting (AGM)" (Check masterData.lastAgmDate or financials.lastAgmDate)
+        - "Date of Last Balance Sheet" (Check masterData.lastBalanceSheetDate or financials.lastBalanceSheetDate)
+        - "Annual Compliance Status" (Check masterData.activeCompliance or financials.complianceStatus)
    - 5. OTHER DIRECTORSHIPS: Individual tables for each director's other directorships.
    - 6. LIST OF CONTINUING CHARGES: Summary table with Charge ID, Holder, Amount, Date.
-   - 7. DETAILED CHARGE PARTICULARS: Each charge in its own <div class="report-section no-break"> block with a sub-table showing SRN, Property Description, Interest Rate, Terms of Repayment, etc.
+   - 7. DETAILED CHARGE PARTICULARS:
+        Follow these steps strictly for the Charges section:
+        STEP 1 — IDENTIFY OPEN/ACTIVE CHARGES ONLY:
+        From MCA Master Data (data.masterData.indexOfCharges), scan "Date of Satisfaction".
+        - If "Date of Satisfaction" is BLANK/NULL → charge is OPEN/ACTIVE → INCLUDE IT
+        - If "Date of Satisfaction" has any date → charge is CLOSED/SATISFIED → EXCLUDE IT
+        Always use MCA Master Data as the authority.
+        
+        STEP 2 — CLASSIFY EACH OPEN CHARGE:
+        For each open charge from Step 1, check "Date of Modification" in MCA Master Data:
+        - If "Date of Modification" is BLANK/NULL → SINGLE ENTRY CHARGE
+        - If "Date of Modification" has a date → MODIFIED CHARGE
+        
+        STEP 3 — EXTRACT DETAILS FROM ROC REPORT (data.charges):
+        - For SINGLE ENTRY CHARGES: Extract full details from the ROC report entry for that Charge ID.
+        - For MODIFIED CHARGES: Extract TWO entries for that Charge ID:
+          1. FIRST ENTRY: The "creation" type entry.
+          2. LAST ENTRY: The latest "modification" type entry by date.
+        
+        STEP 4 — OUTPUT FORMAT:
+        Present in two sub-groups:
+        A) SINGLE ENTRY CHARGES (No Modifications): List each with full details in a block.
+        B) CHARGES WITH MODIFICATIONS: For each, show two rows: "First Created" and "Last Modified".
+        
+        IMPORTANT:
+        - Total open charges must match the count in MCA Master Data.
+        - Do NOT include satisfied charges.
+        - If details are missing in ROC report for an open charge, note "Details not available in ROC Report".
+        - Each charge/group should be in a <div class="report-section no-break">.
 
 3. FINAL PAGE:
    - Disclaimer: A standard professional disclaimer about the scope and limitations of the search.

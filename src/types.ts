@@ -21,6 +21,10 @@ export interface MasterData {
   companyCategory?: string;
   companySubCategory?: string;
   emailId?: string;
+  lastAgmDate?: string;
+  lastBalanceSheetDate?: string;
+  activeCompliance?: string;
+  indexOfCharges?: Charge[];
 }
 
 export interface Signatory {
@@ -50,12 +54,14 @@ export interface Charge {
   repaymentTenure?: string;
   propertyBoundaries?: string;
   dateOfCreation?: string;
-  dateOfLastModification?: string;
+  dateOfModification?: string;
+  dateOfSatisfaction?: string;
   amountSecured?: string;
   termsAndConditions?: string;
   margin?: string;
   termsOfRepayment?: string;
   extentAndOperation?: string;
+  type?: 'creation' | 'modification';
 }
 
 export interface Financials {

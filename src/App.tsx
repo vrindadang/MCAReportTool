@@ -436,6 +436,9 @@ export default function App() {
                       <DataField label="Status" value={data.masterData.companyStatus} status />
                       <DataField label="Authorized Capital" value={data.masterData.authorizedCapital} money />
                       <DataField label="Paid-up Capital" value={data.masterData.paidUpCapital} money />
+                      <DataField label="Date of Last AGM" value={data.masterData.lastAgmDate} />
+                      <DataField label="Date of Last Balance Sheet" value={data.masterData.lastBalanceSheetDate} />
+                      <DataField label="Annual Compliance Status" value={data.masterData.activeCompliance} status />
                       <div className="md:col-span-2">
                         <DataField label="Registered Address" value={data.masterData.registeredAddress} />
                       </div>
