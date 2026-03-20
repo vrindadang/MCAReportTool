@@ -541,24 +541,37 @@ export default function App() {
                     </div>
                     <div className="grid grid-cols-1 gap-4">
                       {data.charges.map((c, idx) => (
-                        <div key={idx} className="preview-card space-y-4">
-                          <div className="flex justify-between items-start">
-                            <DataField label="Charge Holder" value={c.holderName} bold />
-                            <div className="text-[10px] font-bold text-slate-400">ID: {c.chargeId}</div>
-                          </div>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <DataField label="Amount Secured" value={c.amountSecured || c.amount} money />
-                            <DataField label="Nature of Charge" value={c.natureOfCharge || 'N/A'} />
-                            <DataField label="Creation Date" value={c.dateOfCreation} />
-                            <DataField label="Modification Date" value={c.dateOfModification || 'N/A'} />
-                          </div>
-                          <DataField label="Property Description" value={c.propertyDescription} />
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <DataField label="Margin" value={c.margin || 'N/A'} />
-                            <DataField label="Terms of Repayment" value={c.termsOfRepayment || 'N/A'} />
-                            <DataField label="Extent & Operation" value={c.extentAndOperation || 'N/A'} />
-                          </div>
-                          <DataField label="Terms & Conditions" value={c.termsAndConditions || 'N/A'} />
+                        <div key={idx} className={cn("preview-card space-y-4", c.fileReadError && "border-rose-200 bg-rose-50/30")}>
+                          {c.fileReadError ? (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 text-rose-600 font-bold text-sm">
+                                <AlertCircle className="w-4 h-4" />
+                                {c.holderName}
+                              </div>
+                              <p className="text-xs text-rose-500 italic">{c.errorReason}</p>
+                              <p className="text-[10px] text-slate-500">{c.propertyDescription}</p>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex justify-between items-start">
+                                <DataField label="Charge Holder" value={c.holderName} bold />
+                                <div className="text-[10px] font-bold text-slate-400">ID: {c.chargeId}</div>
+                              </div>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <DataField label="Amount Secured" value={c.amountSecured || c.amount} money />
+                                <DataField label="Nature of Charge" value={c.natureOfCharge || 'N/A'} />
+                                <DataField label="Creation Date" value={c.dateOfCreation} />
+                                <DataField label="Modification Date" value={c.dateOfModification || 'N/A'} />
+                              </div>
+                              <DataField label="Property Description" value={c.propertyDescription} />
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <DataField label="Margin" value={c.margin || 'N/A'} />
+                                <DataField label="Terms of Repayment" value={c.termsOfRepayment || 'N/A'} />
+                                <DataField label="Extent & Operation" value={c.extentAndOperation || 'N/A'} />
+                              </div>
+                              <DataField label="Terms & Conditions" value={c.termsAndConditions || 'N/A'} />
+                            </>
+                          )}
                         </div>
                       ))}
                     </div>

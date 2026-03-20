@@ -101,6 +101,8 @@ export async function analyzeDocument(text: string, type: TabType, customType?: 
           termsOfRepayment: { type: Type.STRING },
           extentAndOperation: { type: Type.STRING },
           type: { type: Type.STRING, enum: ["creation", "modification"] },
+          fileReadError: { type: Type.BOOLEAN },
+          errorReason: { type: Type.STRING },
         }
       }
     },
@@ -125,7 +127,27 @@ export async function analyzeDocument(text: string, type: TabType, customType?: 
   return withRetry(async () => {
     const response = await ai.models.generateContent({
       model,
-      contents: `Analyze the following text from an MCA document and extract structured data.
+      contents: `CRITICAL INSTRUCTION - FILE READING FAILURE DETECTION:
+      Before extracting any data, first assess whether the uploaded document was successfully read. A document has FAILED to be read if ANY of the following are true:
+      1. The extracted text contains phrases like "Please wait...", "upgrade Adobe Reader", "If this message is not eventually replaced", or "your PDF viewer may not be able to display this type of document"
+      2. The extracted text is fewer than 200 characters of meaningful content
+      3. The text contains only form template labels (field names) but NO actual data values (e.g., fields like "Name of company", "Amount secured", "Rate of interest" appear but have no corresponding filled values next to them)
+      4. The text is entirely blank or whitespace
+
+      If ANY of the above conditions are met, you MUST return a special failure object instead of a normal entry:
+      {
+        "chargeId": "UNREADABLE",
+        "holderName": "FILE COULD NOT BE READ",
+        "propertyDescription": "FAILED: This file could not be parsed. It is likely an XFA-based dynamic PDF form that requires Adobe Reader or flattening before processing. Please flatten this PDF and re-upload.",
+        "amountSecured": "N/A",
+        "dateOfCreation": "N/A",
+        "type": "creation",
+        "fileReadError": true,
+        "errorReason": "[State the specific reason — e.g., XFA form detected / text too short / template labels only with no values]"
+      }
+      (Adapt this object for other document types if necessary, but keep fileReadError: true and errorReason).
+
+      Analyze the following text from an MCA document and extract structured data.
       Type: ${type === 'other' ? customType : type}
       Prompt: ${prompts[type]}
       
@@ -268,7 +290,17 @@ STRUCTURE:
         
         VALIDATION (MANDATORY):
         - Count total number of CHG files provided (data.chgFileCount).
-        - Count total number of charges included in the report.
+        - Identify any charges where fileReadError is true.
+        - For each unreadable file, display a prominent warning box in the report:
+          <div class="warning-box">
+            ⚠️ WARNING: The following CHG file(s) could not be read and are EXCLUDED from this report. Please flatten these XFA PDFs and re-upload:
+            <ul>
+              <li>→ [File name / Charge holder name as identified]</li>
+              <li>Reason: [errorReason from the charge object]</li>
+            </ul>
+          </div>
+        - Only then proceed with the readable charge entries.
+        - The error count must be explicitly stated: "X of Y CHG files successfully processed. Z file(s) failed and require attention."
         - If any file is not processed or any charge is missing, STOP and output: "ERROR: Incomplete charge data. Some CHG files were not processed."
         
         IMPORTANT:

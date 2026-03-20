@@ -63,6 +63,8 @@ export interface Charge {
   termsOfRepayment?: string;
   extentAndOperation?: string;
   type?: 'creation' | 'modification';
+  fileReadError?: boolean;
+  errorReason?: string;
 }
 
 export interface Financials {
