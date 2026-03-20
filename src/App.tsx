@@ -26,7 +26,7 @@ import { toPng } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import html2pdf from 'html2pdf.js';
 
-import { ComplianceData, TabType } from './types';
+import { ComplianceData, TabType, Charge } from './types';
 import { extractTextFromPDF } from './services/pdf';
 import { analyzeDocument, generateFinalReport, classifyDocument } from './services/gemini';
 import { withRetry } from './utils/retry';
@@ -58,6 +58,8 @@ export default function App() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [srnInput, setSrnInput] = useState('');
   const [customDocName, setCustomDocName] = useState('');
+  const [manualEntry, setManualEntry] = useState<{ type: TabType; fileName: string; customName?: string; index?: number } | null>(null);
+  const [manualText, setManualText] = useState('');
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: TabType, customName?: string) => {
     const file = e.target.files?.[0];
@@ -69,34 +71,109 @@ export default function App() {
     setIsAnalyzing(true);
     try {
       const text = await extractTextFromPDF(file);
-      const result = await withRetry(() => analyzeDocument(text, type, customName));
-
-      setData(prev => {
-        const newData = { ...prev };
-        if (type === 'master') newData.masterData = result;
-        if (type === 'signatories') newData.signatories = result;
-        if (type === 'charges') {
-          newData.charges = [...prev.charges, ...result];
-          newData.chgFileCount = prev.chgFileCount + 1;
-        }
-        if (type === 'financials') newData.financials = result;
-        if (type === 'other' && customName) {
-          newData.otherDocuments = { ...prev.otherDocuments, [customName]: result.summary };
-        }
-        return newData;
-      });
-      if (type === 'other') setCustomDocName('');
+      await analyzeAndStore(text, type, file.name, customName);
     } catch (error: any) {
       console.error('Analysis failed:', error);
       const errorMessage = error?.message || 'Unknown error';
       if (type === 'charges') {
+        // Add a placeholder card so user can fix it manually from the preview
+        const errorCharge: Charge = {
+          srn: "N/A",
+          chargeId: "ERROR",
+          amount: "N/A",
+          holderName: file.name,
+          propertyDescription: `FAILED: ${errorMessage}. Please paste text manually.`,
+          amountSecured: "N/A",
+          dateOfCreation: "N/A",
+          type: "creation",
+          fileReadError: true,
+          errorReason: errorMessage
+        };
         setData(prev => ({
           ...prev,
+          charges: [...prev.charges, errorCharge],
           chgFileCount: prev.chgFileCount + 1,
           failedDocuments: [...prev.failedDocuments, { name: file.name, error: errorMessage }]
         }));
+      } else {
+        alert(`Failed to analyze document: ${errorMessage}. You can try manual text entry.`);
       }
-      alert(`Failed to analyze document: ${errorMessage}. Please check your internet connection and try again.`);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const analyzeAndStore = async (text: string, type: TabType, fileName: string, customName?: string, replaceIndex?: number) => {
+    const result = await withRetry(() => analyzeDocument(text, type, fileName, customName));
+
+    setData(prev => {
+      const newData = { ...prev };
+      
+      // Handle the case where result might be { charges: [...] } or just the data
+      const extractedData = (type === 'charges' && result.charges) ? result.charges : result;
+      const dataArray = Array.isArray(extractedData) ? extractedData : [extractedData];
+
+      // If we are replacing an unreadable charge
+      let finalReplaceIndex = replaceIndex;
+      
+      // If no index provided, try to find an unreadable card with matching fileName (for failed documents)
+      if (type === 'charges' && typeof finalReplaceIndex !== 'number') {
+        const idx = prev.charges.findIndex(c => 
+          c.fileReadError && (c.holderName === fileName || c.holderName === "FILE COULD NOT BE READ")
+        );
+        if (idx !== -1) finalReplaceIndex = idx;
+      }
+
+      if (type === 'charges' && typeof finalReplaceIndex === 'number') {
+        const updatedCharges = [...prev.charges];
+        if (dataArray.length > 0) {
+          // Replace the unreadable one with the first extracted charge
+          updatedCharges[finalReplaceIndex] = dataArray[0];
+          // If multiple charges were found in the pasted text, insert them after
+          if (dataArray.length > 1) {
+            updatedCharges.splice(finalReplaceIndex + 1, 0, ...dataArray.slice(1));
+          }
+        }
+        newData.charges = updatedCharges;
+        return newData;
+      }
+
+      if (type === 'master') newData.masterData = result;
+      if (type === 'signatories') newData.signatories = result;
+      if (type === 'charges') {
+        newData.charges = [...prev.charges, ...dataArray];
+        newData.chgFileCount = prev.chgFileCount + 1;
+      }
+      if (type === 'financials') newData.financials = result;
+      if (type === 'other' && customName) {
+        newData.otherDocuments = { ...prev.otherDocuments, [customName]: result.summary };
+      }
+      return newData;
+    });
+    if (type === 'other') setCustomDocName('');
+  };
+
+  const handleManualSubmit = async () => {
+    if (!manualEntry || !manualText.trim()) return;
+    
+    setIsAnalyzing(true);
+    const { type, fileName, customName, index } = manualEntry;
+    
+    try {
+      await analyzeAndStore(manualText, type, fileName, customName, index);
+      
+      // If it was a charge document, remove it from failedDocuments list
+      if (type === 'charges') {
+        setData(prev => ({
+          ...prev,
+          failedDocuments: prev.failedDocuments.filter(d => d.name !== fileName)
+        }));
+      }
+      
+      setManualEntry(null);
+      setManualText('');
+    } catch (error: any) {
+      alert(`Manual analysis failed: ${error.message}`);
     } finally {
       setIsAnalyzing(false);
     }
@@ -115,22 +192,7 @@ export default function App() {
       try {
         const text = await extractTextFromPDF(file);
         const category = await classifyDocument(text);
-        const result = await analyzeDocument(text, category, file.name);
-
-        setData(prev => {
-          const newData = { ...prev };
-          if (category === 'master') newData.masterData = result;
-          if (category === 'signatories') newData.signatories = result;
-          if (category === 'charges') {
-            newData.charges = [...prev.charges, ...result];
-            newData.chgFileCount = prev.chgFileCount + 1;
-          }
-          if (category === 'financials') newData.financials = result;
-          if (category === 'other') {
-            newData.otherDocuments = { ...prev.otherDocuments, [file.name]: result.summary };
-          }
-          return newData;
-        });
+        await analyzeAndStore(text, category, file.name);
 
         // Add a small delay between files to avoid rate limits
         if (i < files.length - 1) {
@@ -372,7 +434,15 @@ export default function App() {
                       <ul className="text-[9px] text-rose-500 space-y-1">
                         {data.failedDocuments.map((doc, i) => (
                           <li key={i} className="flex flex-col">
-                            <span className="font-bold">{doc.name}</span>
+                            <div className="flex justify-between items-start">
+                              <span className="font-bold">{doc.name}</span>
+                              <button 
+                                onClick={() => setManualEntry({ type: 'charges', fileName: doc.name })}
+                                className="text-sky-600 hover:underline font-bold"
+                              >
+                                Fix Manually
+                              </button>
+                            </div>
                             <span className="opacity-70 italic">{doc.error}</span>
                           </li>
                         ))}
@@ -544,9 +614,17 @@ export default function App() {
                         <div key={idx} className={cn("preview-card space-y-4", c.fileReadError && "border-rose-200 bg-rose-50/30")}>
                           {c.fileReadError ? (
                             <div className="space-y-2">
-                              <div className="flex items-center gap-2 text-rose-600 font-bold text-sm">
-                                <AlertCircle className="w-4 h-4" />
-                                {c.holderName}
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2 text-rose-600 font-bold text-sm">
+                                  <AlertCircle className="w-4 h-4" />
+                                  {c.holderName}
+                                </div>
+                                <button 
+                                  onClick={() => setManualEntry({ type: 'charges', fileName: c.holderName, index: idx })}
+                                  className="text-[10px] text-sky-600 hover:underline font-bold"
+                                >
+                                  Paste Text Manually
+                                </button>
                               </div>
                               <p className="text-xs text-rose-500 italic">{c.errorReason}</p>
                               <p className="text-[10px] text-slate-500">{c.propertyDescription}</p>
@@ -656,6 +734,68 @@ export default function App() {
           {report && <div dangerouslySetInnerHTML={{ __html: report }} />}
         </div>
       </div>
+
+      {/* Manual Entry Modal */}
+      <AnimatePresence>
+        {manualEntry && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-200"
+            >
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div>
+                  <h3 className="text-lg font-black text-[#0F172A] uppercase tracking-tight">Manual Text Entry</h3>
+                  <p className="text-xs text-slate-500">Paste the text from <span className="font-bold text-sky-600">{manualEntry.fileName}</span></p>
+                </div>
+                <button 
+                  onClick={() => { setManualEntry(null); setManualText(''); }}
+                  className="p-2 hover:bg-slate-200 rounded-full transition-colors"
+                >
+                  <AlertCircle className="w-5 h-5 text-slate-400 rotate-45" />
+                </button>
+              </div>
+              
+              <div className="p-6 space-y-4">
+                <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl flex gap-3">
+                  <AlertCircle className="w-5 h-5 text-amber-500 shrink-0" />
+                  <p className="text-xs text-amber-700 leading-relaxed">
+                    If the PDF was an unreadable XFA form, you can open it in Adobe Reader, 
+                    <span className="font-bold"> Select All (Ctrl+A)</span>, <span className="font-bold">Copy (Ctrl+C)</span>, 
+                    and paste the text here. Our AI will extract the data from the raw text.
+                  </p>
+                </div>
+                
+                <textarea
+                  value={manualText}
+                  onChange={(e) => setManualText(e.target.value)}
+                  placeholder="Paste document text here..."
+                  className="w-full h-64 bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-sky-500/20 resize-none"
+                />
+                
+                <div className="flex gap-3 justify-end pt-2">
+                  <button
+                    onClick={() => { setManualEntry(null); setManualText(''); }}
+                    className="px-6 py-2.5 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-100 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleManualSubmit}
+                    disabled={isAnalyzing || !manualText.trim()}
+                    className="bg-[#0F172A] hover:bg-slate-800 disabled:opacity-50 text-white px-8 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-slate-900/20 flex items-center gap-2"
+                  >
+                    {isAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileCheck className="w-4 h-4 text-sky-400" />}
+                    Analyze & Fix
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

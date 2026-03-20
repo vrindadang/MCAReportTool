@@ -4,7 +4,7 @@ import { withRetry } from "../utils/retry";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
-export async function analyzeDocument(text: string, type: TabType, customType?: string): Promise<any> {
+export async function analyzeDocument(text: string, type: TabType, fileName?: string, customType?: string): Promise<any> {
   const model = "gemini-3-flash-preview";
   
   const prompts = {
@@ -124,6 +124,8 @@ export async function analyzeDocument(text: string, type: TabType, customType?: 
     }
   };
 
+  const schemas_any = schemas as any;
+
   return withRetry(async () => {
     const response = await ai.models.generateContent({
       model,
@@ -137,7 +139,7 @@ export async function analyzeDocument(text: string, type: TabType, customType?: 
       If ANY of the above conditions are met, you MUST return a special failure object instead of a normal entry:
       {
         "chargeId": "UNREADABLE",
-        "holderName": "FILE COULD NOT BE READ",
+        "holderName": "${fileName || "FILE COULD NOT BE READ"}",
         "propertyDescription": "FAILED: This file could not be parsed. It is likely an XFA-based dynamic PDF form that requires Adobe Reader or flattening before processing. Please flatten this PDF and re-upload.",
         "amountSecured": "N/A",
         "dateOfCreation": "N/A",
@@ -157,7 +159,7 @@ export async function analyzeDocument(text: string, type: TabType, customType?: 
       ${text.substring(0, 30000)}`, // Limit text to avoid token issues
       config: {
         responseMimeType: "application/json",
-        responseSchema: schemas[type] as any
+        responseSchema: schemas_any[type]
       }
     });
 
@@ -288,20 +290,10 @@ STRUCTURE:
         A) SINGLE ENTRY CHARGES (No Modifications): List each with full details in a block.
         B) CHARGES WITH MODIFICATIONS: For each, show two rows: "First Created" and "Last Modified".
         
-        VALIDATION (MANDATORY):
-        - Count total number of CHG files provided (data.chgFileCount).
-        - Identify any charges where fileReadError is true.
-        - For each unreadable file, display a prominent warning box in the report:
-          <div class="warning-box">
-            ⚠️ WARNING: The following CHG file(s) could not be read and are EXCLUDED from this report. Please flatten these XFA PDFs and re-upload:
-            <ul>
-              <li>→ [File name / Charge holder name as identified]</li>
-              <li>Reason: [errorReason from the charge object]</li>
-            </ul>
-          </div>
-        - Only then proceed with the readable charge entries.
-        - The error count must be explicitly stated: "X of Y CHG files successfully processed. Z file(s) failed and require attention."
-        - If any file is not processed or any charge is missing, STOP and output: "ERROR: Incomplete charge data. Some CHG files were not processed."
+        VALIDATION:
+        - Process only the readable charge entries provided in data.charges.
+        - Do NOT include any warnings or status messages about failed or unreadable files in the final report.
+        - The report should only contain successfully extracted data.
         
         IMPORTANT:
         - Total open charges must match the count in MCA Master Data.
