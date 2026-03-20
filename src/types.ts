@@ -4,6 +4,11 @@
  */
 
 export interface MasterData {
+  companyIndustry?: string;
+  openChargesCount?: string;
+  bankName?: string;
+  referenceNumber?: string;
+  reportDate?: string;
   companyName: string;
   cin: string;
   registrationDate: string;
@@ -45,6 +50,7 @@ export interface Signatory {
 }
 
 export interface Charge {
+  holderAddress?: string;
   srn: string;
   chargeId: string;
   amount: string;

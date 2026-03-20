@@ -12,13 +12,18 @@ export async function extractTextFromPDF(file: File): Promise<string> {
   }).promise;
   let fullText = '';
 
-  // Extract standard text content
+  // Extract standard text content in parallel for speed
+  const pagePromises = [];
   for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const textContent = await page.getTextContent();
-    const pageText = textContent.items.map((item: any) => item.str).join(' ');
-    fullText += pageText + '\n';
+    pagePromises.push((async () => {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      return textContent.items.map((item: any) => item.str).join(' ');
+    })());
   }
+  
+  const pageTexts = await Promise.all(pagePromises);
+  fullText = pageTexts.join('\n');
 
   // Check for XFA (XML Forms Architecture) data
   try {
